@@ -2,7 +2,7 @@
 
 ![FaceTrail banner](assets/banner.svg)
 
-FaceTrail is a cross-platform tool for face extraction, clustering, visual reports, and privacy-safe media exports. It can scan a single file or a whole folder, save face crops automatically, group similar detections, create blurred copies for sharing, and now also offers a local desktop GUI for people who do not want to work from the terminal.
+FaceTrail is a cross-platform tool for face extraction, clustering, visual reports, and privacy-safe media exports. It can scan a single file or a whole folder, save face crops automatically, group similar detections, create blurred copies for sharing, and now offers a modern pro engine based on official OpenCV Zoo models plus a local desktop GUI for people who do not want to work from the terminal.
 
 ## Why this is useful
 
@@ -11,11 +11,13 @@ FaceTrail is a cross-platform tool for face extraction, clustering, visual repor
 - Generate HTML, JSON, and CSV outputs for audits, curation, or local datasets.
 - Create privacy-safe exports before sharing footage publicly.
 - Let non-technical users run the full pipeline from a desktop window.
+- Use a stronger face engine automatically when the system can download the official models.
 
 ## Features
 
 - Works with single images, folders, and videos.
-- Uses OpenCV bundled Haar cascades automatically.
+- Uses an automatic `pro` backend with YuNet + SFace when available.
+- Falls back to the classic Haar backend if the pro engine cannot be initialized.
 - Extracts face crops and scores sharpness.
 - Keeps the best face crop per detected person cluster instead of saving endless duplicates.
 - Clusters similar detections into reusable groups.
@@ -23,6 +25,7 @@ FaceTrail is a cross-platform tool for face extraction, clustering, visual repor
 - Saves blurred privacy-safe image or video copies.
 - Includes a desktop GUI with file pickers and one-click scan flow.
 - Can open the final report automatically in the browser.
+- Downloads and caches the official OpenCV Zoo ONNX models automatically.
 
 ## Installation
 
@@ -47,7 +50,7 @@ pip install -e .
 Terminal scan:
 
 ```bash
-facetrail scan ./media --output ./output --save-redacted --open-report
+facetrail scan ./media --output ./output --save-redacted --open-report --engine auto
 ```
 
 Desktop GUI:
@@ -83,6 +86,12 @@ Available actions in the GUI:
 - `Blur faces in the original media`
 - `Full workspace: crops + report + blurred exports`
 
+Available engines in the GUI:
+
+- `Auto`: recommended, tries YuNet + SFace first
+- `Pro`: forces YuNet + SFace
+- `Classic`: forces Haar cascades
+
 ## What the GUI adds
 
 - Choose files or folders with buttons instead of typing paths.
@@ -112,7 +121,7 @@ Inside blur-enabled modes:
 ## Command reference
 
 ```text
-facetrail scan INPUT [--output OUTPUT] [--sample-every N] [--min-face-size PX] [--cluster-threshold FLOAT] [--save-redacted] [--open-report]
+facetrail scan INPUT [--output OUTPUT] [--sample-every N] [--min-face-size PX] [--cluster-threshold FLOAT|auto] [--engine auto|pro|classic] [--save-redacted] [--open-report]
 facetrail gui [--start-input PATH]
 facetrail-gui
 ```
@@ -121,7 +130,17 @@ Recommended defaults:
 
 - `--sample-every 5` for balanced speed on videos.
 - `--min-face-size 64` for everyday phone and webcam footage.
-- `--cluster-threshold 0.92` for conservative grouping.
+- `--cluster-threshold auto` to let FaceTrail choose the correct value per engine.
+- `--engine auto` for the best balance between quality and compatibility.
+
+## Pro engine
+
+The pro backend uses official OpenCV Zoo models:
+
+- YuNet for face detection
+- SFace for face embeddings and more reliable clustering
+
+FaceTrail downloads these ONNX models automatically into your user cache the first time they are needed. If that step fails and you are using `--engine auto`, the app falls back to the classic Haar-based mode instead of crashing.
 
 ## Release packages
 
@@ -146,7 +165,7 @@ python scripts/build_release.py
 ## Limitations
 
 - Clustering is appearance-based and lightweight. It is not a biometric identity system.
-- Haar cascades are fast and portable, but they are not state-of-the-art detectors.
+- The classic Haar backend is portable, but the pro backend is more reliable for real-world use.
 - Performance depends on lighting, face angle, and source quality.
 - The desktop GUI uses Tkinter, which is included in most Python installs but can be missing in minimal Linux environments.
 
@@ -156,7 +175,7 @@ python scripts/build_release.py
 
 ![FaceTrail banner](assets/banner.svg)
 
-FaceTrail es una herramienta multiplataforma para extraer rostros, agrupar apariciones similares, generar reportes visuales y exportar copias anonimizadas. Puede analizar un archivo o una carpeta completa, guardar recortes automaticamente, agrupar detecciones parecidas, crear copias con desenfoque para compartir y ahora tambien incluye una interfaz de escritorio para personas que no quieren usar terminal.
+FaceTrail es una herramienta multiplataforma para extraer rostros, agrupar apariciones similares, generar reportes visuales y exportar copias anonimizadas. Puede analizar un archivo o una carpeta completa, guardar recortes automaticamente, agrupar detecciones parecidas, crear copias con desenfoque para compartir y ahora tambien incluye un motor pro basado en modelos oficiales de OpenCV Zoo, ademas de una interfaz de escritorio para personas que no quieren usar terminal.
 
 ## Por que es util
 
@@ -165,11 +184,13 @@ FaceTrail es una herramienta multiplataforma para extraer rostros, agrupar apari
 - Genera salidas HTML, JSON y CSV para auditorias, curacion o datasets locales.
 - Crea exportaciones anonimizadas antes de compartir material.
 - Permite que personas no tecnicas ejecuten todo desde una ventana local.
+- Usa automaticamente un motor facial mas moderno cuando logra descargar los modelos oficiales.
 
 ## Funciones
 
 - Funciona con imagenes individuales, carpetas y videos.
-- Usa automaticamente las Haar cascades incluidas con OpenCV.
+- Usa un backend `pro` con YuNet + SFace cuando esta disponible.
+- Hace fallback al backend clasico con Haar si el motor pro no se puede inicializar.
 - Extrae recortes de rostros y mide nitidez.
 - Conserva la mejor imagen por cluster de rostro en vez de guardar duplicados sin fin.
 - Agrupa detecciones similares en clusters reutilizables.
@@ -177,6 +198,7 @@ FaceTrail es una herramienta multiplataforma para extraer rostros, agrupar apari
 - Guarda copias de imagen o video con desenfoque facial.
 - Incluye una GUI de escritorio con selectores y flujo de un clic.
 - Puede abrir automaticamente el reporte final en el navegador.
+- Descarga y guarda en cache los modelos ONNX oficiales de OpenCV Zoo.
 
 ## Instalacion
 
@@ -201,7 +223,7 @@ pip install -e .
 Analisis por terminal:
 
 ```bash
-facetrail scan ./media --output ./output --save-redacted --open-report
+facetrail scan ./media --output ./output --save-redacted --open-report --engine auto
 ```
 
 GUI de escritorio:
@@ -237,6 +259,12 @@ Acciones disponibles en la GUI:
 - `Blur faces in the original media`
 - `Full workspace: crops + report + blurred exports`
 
+Motores disponibles en la GUI:
+
+- `Auto`: recomendado, intenta YuNet + SFace primero
+- `Pro`: fuerza YuNet + SFace
+- `Classic`: fuerza Haar cascades
+
 ## Que agrega la GUI
 
 - Elegir archivos o carpetas con botones en vez de escribir rutas.
@@ -266,7 +294,7 @@ Dentro de los modos con anonimizado:
 ## Referencia de comandos
 
 ```text
-facetrail scan INPUT [--output OUTPUT] [--sample-every N] [--min-face-size PX] [--cluster-threshold FLOAT] [--save-redacted] [--open-report]
+facetrail scan INPUT [--output OUTPUT] [--sample-every N] [--min-face-size PX] [--cluster-threshold FLOAT|auto] [--engine auto|pro|classic] [--save-redacted] [--open-report]
 facetrail gui [--start-input PATH]
 facetrail-gui
 ```
@@ -275,7 +303,17 @@ Valores recomendados:
 
 - `--sample-every 5` para equilibrar velocidad en videos.
 - `--min-face-size 64` para metraje comun de webcam o celular.
-- `--cluster-threshold 0.92` para agrupamiento conservador.
+- `--cluster-threshold auto` para que FaceTrail elija el valor correcto segun el motor.
+- `--engine auto` para el mejor equilibrio entre calidad y compatibilidad.
+
+## Motor pro
+
+El backend pro usa modelos oficiales de OpenCV Zoo:
+
+- YuNet para deteccion facial
+- SFace para embeddings y agrupamiento mas confiable
+
+FaceTrail descarga esos modelos ONNX automaticamente en la cache del usuario la primera vez que los necesita. Si eso falla y estas usando `--engine auto`, la aplicacion hace fallback al modo clasico con Haar en vez de romperse.
 
 ## Paquetes de release
 
@@ -300,6 +338,6 @@ python scripts/build_release.py
 ## Limitaciones
 
 - El agrupamiento es ligero y basado en apariencia. No pretende ser biometria.
-- Haar cascades es rapido y portable, pero no representa el estado del arte.
+- El backend clasico con Haar es portable, pero el motor pro es bastante mas confiable en uso real.
 - El rendimiento depende de la iluminacion, el angulo facial y la calidad del material.
 - La GUI de escritorio usa Tkinter, que suele venir con Python, pero puede faltar en instalaciones minimas de Linux.

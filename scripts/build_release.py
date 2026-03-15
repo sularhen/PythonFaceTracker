@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 STAGING = DIST / "staging"
 PROJECT_NAME = "facetrail"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 INCLUDE_PATHS = [
     "README.md",

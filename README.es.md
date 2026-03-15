@@ -2,16 +2,18 @@
 
 ![FaceTrail banner](assets/banner.svg)
 
-FaceTrail es una CLI multiplataforma para extraer rostros, agrupar apariciones similares, generar reportes visuales y exportar copias anonimizadas. Convierte una carpeta de imagenes o videos en un espacio de trabajo realmente util, y nace de la idea original de `PythonFaceTracker` pero rehecha para quedar mas limpia, portable y compartible.
+FaceTrail es una CLI multiplataforma para extraer rostros, agrupar apariciones similares, generar reportes visuales y exportar copias anonimizadas. Convierte una carpeta de imagenes o videos en un espacio de trabajo realmente util, y ahora suma un motor pro con modelos oficiales de OpenCV Zoo mas una GUI de escritorio para uso simple.
 
 ## Que hace
 
 - Escanea imagenes individuales, carpetas completas o videos.
-- Detecta rostros con OpenCV sin pedir rutas manuales de cascadas.
+- Detecta rostros con un backend pro YuNet + SFace cuando esta disponible.
+- Hace fallback a Haar si el motor pro no se puede inicializar.
 - Extrae recortes automaticamente y agrupa apariciones parecidas.
 - Calcula la mejor captura de cada grupo segun nitidez.
 - Genera un reporte HTML, un `summary.json` y un `detections.csv`.
 - Puede exportar copias anonimizadas con desenfoque facial.
+- Descarga automaticamente los modelos oficiales ONNX en la cache del usuario.
 
 ## Instalacion
 
@@ -45,14 +47,24 @@ python scripts/build_release.py
 ## Uso rapido
 
 ```bash
-facetrail scan ./media --output ./output --save-redacted
+facetrail scan ./media --output ./output --save-redacted --engine auto
 ```
 
 Opciones utiles:
 
 - `--sample-every 10`: procesa uno de cada 10 frames en videos.
 - `--min-face-size 96`: ignora rostros muy pequenos.
-- `--cluster-threshold 0.95`: crea grupos mas estrictos.
+- `--cluster-threshold auto`: usa el valor correcto segun el motor.
+- `--engine auto`: intenta usar el motor pro primero.
+
+## Motor pro
+
+FaceTrail puede usar:
+
+- YuNet para deteccion facial
+- SFace para embeddings y agrupamiento mas confiable
+
+Si no logra inicializar ese motor y estas usando `--engine auto`, vuelve al modo clasico automaticamente.
 
 ## Salidas
 

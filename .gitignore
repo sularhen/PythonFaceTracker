@@ -6,3 +6,4 @@ dist/staging/
 *.egg-info/
 .pytest_cache/
 output/
+.cache_models/

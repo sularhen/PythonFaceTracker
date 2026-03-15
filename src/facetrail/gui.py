@@ -31,8 +31,9 @@ class FaceTrailApp:
         self.output_path = StringVar(value="output")
         self.sample_every = IntVar(value=5)
         self.min_face_size = IntVar(value=64)
-        self.cluster_threshold = StringVar(value="0.92")
+        self.cluster_threshold = StringVar(value="auto")
         self.mode = StringVar(value="full_workspace")
+        self.engine = StringVar(value="auto")
         self.auto_open = BooleanVar(value=True)
         self.status_text = StringVar(value="Choose a file or folder and press Start Scan.")
         self.summary_text = StringVar(value="No scan yet.")
@@ -115,6 +116,27 @@ class FaceTrailApp:
             variable=self.mode,
         ).pack(anchor="w", pady=(6, 0))
 
+        engine_card = ttk.LabelFrame(outer, text="Detection Engine", style="Card.TLabelframe", padding=16)
+        engine_card.pack(fill="x", pady=(16, 0))
+        ttk.Radiobutton(
+            engine_card,
+            text="Auto (recommended): try YuNet + SFace, then fallback if needed",
+            value="auto",
+            variable=self.engine,
+        ).pack(anchor="w")
+        ttk.Radiobutton(
+            engine_card,
+            text="Pro: YuNet detection + SFace identity features",
+            value="pro",
+            variable=self.engine,
+        ).pack(anchor="w", pady=(6, 0))
+        ttk.Radiobutton(
+            engine_card,
+            text="Classic: Haar cascades only",
+            value="classic",
+            variable=self.engine,
+        ).pack(anchor="w", pady=(6, 0))
+
         settings_card = ttk.LabelFrame(outer, text="Automation Settings", style="Card.TLabelframe", padding=16)
         settings_card.pack(fill="x", pady=(16, 0))
         for index in range(4):
@@ -170,11 +192,14 @@ class FaceTrailApp:
         if not input_value:
             messagebox.showerror("FaceTrail", "Pick a file or folder first.")
             return
-        try:
-            cluster_threshold = float(self.cluster_threshold.get())
-        except ValueError:
-            messagebox.showerror("FaceTrail", "Cluster threshold must be a number like 0.92.")
-            return
+        cluster_raw = self.cluster_threshold.get().strip().lower()
+        cluster_threshold = None
+        if cluster_raw and cluster_raw != "auto":
+            try:
+                cluster_threshold = float(cluster_raw)
+            except ValueError:
+                messagebox.showerror("FaceTrail", "Cluster threshold must be a number like 0.36, 0.92, or 'auto'.")
+                return
 
         if self.run_button is not None:
             self.run_button.configure(state="disabled")
@@ -183,12 +208,25 @@ class FaceTrailApp:
 
         worker = threading.Thread(
             target=self._run_scan,
-            args=(input_value, self.output_path.get().strip() or "output", cluster_threshold, self.mode.get()),
+            args=(
+                input_value,
+                self.output_path.get().strip() or "output",
+                cluster_threshold,
+                self.mode.get(),
+                self.engine.get(),
+            ),
             daemon=True,
         )
         worker.start()
 
-    def _run_scan(self, input_value: str, output_value: str, cluster_threshold: float, mode: str) -> None:
+    def _run_scan(
+        self,
+        input_value: str,
+        output_value: str,
+        cluster_threshold: float | None,
+        mode: str,
+        engine: str,
+    ) -> None:
         try:
             target_output = self._build_mode_output(Path(output_value), mode)
             options = self._mode_options(mode)
@@ -200,6 +238,7 @@ class FaceTrailApp:
                 save_redacted=options["save_redacted"],
                 save_crops=options["save_crops"],
                 save_report=options["save_report"],
+                engine=engine,
             )
             summary = analyzer.analyze(Path(input_value))
             self.worker_queue.put(("success", {"summary": summary, "output": str(target_output), "mode": mode}))
@@ -249,6 +288,7 @@ class FaceTrailApp:
         lines = [
             f"Mode: {mode_labels.get(mode, mode)}",
             f"Output folder: {output_path}",
+            f"Engine: {summary.get('engine', 'unknown')}",
             f"Faces detected: {summary.get('faces_detected', 0)}",
             f"Clusters: {summary.get('people_clustered', 0)}",
             f"Images: {summary.get('input_images', 0)}",

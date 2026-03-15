@@ -9,6 +9,12 @@ from facetrail.core import FaceTrailAnalyzer
 from facetrail.gui import launch_gui
 
 
+def parse_cluster_threshold(value: str) -> float | None:
+    if value.lower() == "auto":
+        return None
+    return float(value)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="facetrail",
@@ -40,9 +46,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     scan_parser.add_argument(
         "--cluster-threshold",
-        type=float,
-        default=0.92,
-        help="Higher values create more clusters, lower values merge more faces.",
+        type=parse_cluster_threshold,
+        default=None,
+        help="Similarity threshold. Use 'auto' to apply the engine default.",
+    )
+    scan_parser.add_argument(
+        "--engine",
+        choices=("auto", "pro", "classic"),
+        default="auto",
+        help="Detection and recognition engine. 'auto' tries the pro engine first and falls back if needed.",
     )
     scan_parser.add_argument(
         "--save-redacted",
@@ -75,9 +87,11 @@ def main(argv: list[str] | None = None) -> int:
             min_face_size=args.min_face_size,
             cluster_threshold=args.cluster_threshold,
             save_redacted=args.save_redacted,
+            engine=args.engine,
         )
         summary = analyzer.analyze(Path(args.input))
         print(f"FaceTrail finished. Faces: {summary['faces_detected']} | Clusters: {summary['people_clustered']}")
+        print(f"Engine: {summary['engine']}")
         report_path = Path(args.output) / "report" / "gallery.html"
         print(f"Report: {report_path}")
         if args.open_report:

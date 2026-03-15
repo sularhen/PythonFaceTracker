@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0 - 2026-03-15
+
+- Added a pro engine based on OpenCV YuNet face detection and SFace recognition.
+- Added automatic download and caching of official OpenCV Zoo face models.
+- Added engine selection and automatic fallback to legacy Haar mode.
+- Improved clustering quality with engine-specific defaults.
+- Kept only the best crop per detected face cluster.
+
 ## 1.0.0 - 2026-03-15
 
 - Rebuilt the repository as the `facetrail` Python package.
