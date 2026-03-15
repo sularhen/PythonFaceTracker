@@ -36,12 +36,16 @@ class FaceTrailAnalyzer:
         min_face_size: int = 64,
         cluster_threshold: float = 0.92,
         save_redacted: bool = False,
+        save_crops: bool = True,
+        save_report: bool = True,
     ) -> None:
         self.output_dir = output_dir
         self.sample_every = max(1, sample_every)
         self.min_face_size = min_face_size
         self.cluster_threshold = cluster_threshold
         self.save_redacted = save_redacted
+        self.save_crops = save_crops
+        self.save_report = save_report
         self.crops_dir = output_dir / "faces"
         self.redacted_dir = output_dir / "redacted"
         self.report_dir = output_dir / "report"
@@ -50,8 +54,10 @@ class FaceTrailAnalyzer:
 
     def _ensure_dirs(self) -> None:
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.crops_dir.mkdir(parents=True, exist_ok=True)
-        self.report_dir.mkdir(parents=True, exist_ok=True)
+        if self.save_crops:
+            self.crops_dir.mkdir(parents=True, exist_ok=True)
+        if self.save_report:
+            self.report_dir.mkdir(parents=True, exist_ok=True)
         if self.save_redacted:
             self.redacted_dir.mkdir(parents=True, exist_ok=True)
 
@@ -102,7 +108,8 @@ class FaceTrailAnalyzer:
 
         self._cluster_detections(detections, embeddings)
         summary = self._build_summary(detections, media_stats, images, videos)
-        self._write_outputs(summary, detections)
+        if self.save_report:
+            self._write_outputs(summary, detections)
         return summary
 
     def _process_image(self, image_path: Path) -> tuple[list[Detection], list[np.ndarray]]:
@@ -198,9 +205,12 @@ class FaceTrailAnalyzer:
             embedding = self._create_embedding(crop)
             sharpness = self._sharpness_score(crop)
             confidence = min(0.99, 0.55 + min(0.4, sharpness / 1000.0))
-            crop_name = f"{base_name}_f{frame_index:06d}_face{box_index:02d}.jpg"
-            crop_path = self.crops_dir / crop_name
-            cv2.imwrite(str(crop_path), crop)
+            crop_path = ""
+            if self.save_crops:
+                crop_name = f"{base_name}_f{frame_index:06d}_face{box_index:02d}.jpg"
+                crop_file = self.crops_dir / crop_name
+                cv2.imwrite(str(crop_file), crop)
+                crop_path = str(crop_file)
 
             detections.append(
                 Detection(
@@ -211,7 +221,7 @@ class FaceTrailAnalyzer:
                     bbox=(x, y, w, h),
                     sharpness=sharpness,
                     confidence=confidence,
-                    crop_path=str(crop_path),
+                    crop_path=crop_path,
                 )
             )
             embeddings.append(embedding)
@@ -369,11 +379,14 @@ class FaceTrailAnalyzer:
         cards = []
         for person in summary["people"]:
             sources = "<br>".join(person["sources"][:3]) or "No sources"
-            best_face = Path(person["best_face"]).resolve().as_uri()
+            best_face = ""
+            if person["best_face"]:
+                best_face = Path(person["best_face"]).resolve().as_uri()
+            image_markup = f'<img src="{best_face}" alt="Cluster {person["cluster_id"]}">' if best_face else '<div class="placeholder">No face crop saved for this mode</div>'
             cards.append(
                 f"""
                 <article class="card">
-                  <img src="{best_face}" alt="Cluster {person['cluster_id']}">
+                  {image_markup}
                   <div class="meta">
                     <h3>Cluster {person['cluster_id']}</h3>
                     <p>{person['detections']} detections</p>
@@ -461,6 +474,17 @@ class FaceTrailAnalyzer:
       object-fit: cover;
       border-radius: 14px;
       display: block;
+    }}
+    .placeholder {{
+      height: 220px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 16px;
+      background: linear-gradient(135deg, #ece4d7, #ddd1be);
+      color: var(--muted);
+      font-weight: 600;
     }}
     h1, h2, h3, p {{
       margin-top: 0;

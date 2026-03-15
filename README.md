@@ -61,21 +61,51 @@ or:
 facetrail-gui
 ```
 
+## GUI flow
+
+Run the GUI with:
+
+```bash
+facetrail gui
+```
+
+Then the app will let you:
+
+1. choose an image, video, or folder
+2. choose what you want FaceTrail to do
+3. press Start Scan
+4. get the result inside a dedicated output folder for that choice
+
+Available actions in the GUI:
+
+- `Extract faces + report`
+- `Blur faces in the original media`
+- `Full workspace: crops + report + blurred exports`
+
 ## What the GUI adds
 
 - Choose files or folders with buttons instead of typing paths.
 - Pick the output folder visually.
-- Toggle blurred exports and report auto-open.
+- Choose the exact result type before scanning.
 - Start the full scan with one click.
 - Open the generated report again from the same window.
 
 ## Output structure
 
-- `output/faces/`: extracted face crops.
-- `output/redacted/`: optional blurred image or video copies.
-- `output/report/gallery.html`: visual review report.
-- `output/report/summary.json`: machine-readable summary.
-- `output/report/detections.csv`: spreadsheet-friendly manifest.
+- `output/extract_faces_YYYYMMDD-HHMMSS/`: face crops plus report files.
+- `output/privacy_blur_YYYYMMDD-HHMMSS/`: blurred image or video output.
+- `output/full_workspace_YYYYMMDD-HHMMSS/`: crops, blurred copies, and report files.
+
+Inside report-enabled modes:
+
+- `faces/`: extracted face crops.
+- `report/gallery.html`: visual review report.
+- `report/summary.json`: machine-readable summary.
+- `report/detections.csv`: spreadsheet-friendly manifest.
+
+Inside blur-enabled modes:
+
+- `redacted/`: privacy-safe image or video exports.
 
 ## Command reference
 
@@ -183,21 +213,51 @@ o:
 facetrail-gui
 ```
 
+## Flujo de la GUI
+
+Ejecuta la GUI con:
+
+```bash
+facetrail gui
+```
+
+Luego la aplicacion te deja:
+
+1. elegir una imagen, video o carpeta
+2. elegir que quieres que haga FaceTrail
+3. pulsar `Start Scan`
+4. recibir el resultado dentro de una carpeta dedicada a esa eleccion
+
+Acciones disponibles en la GUI:
+
+- `Extract faces + report`
+- `Blur faces in the original media`
+- `Full workspace: crops + report + blurred exports`
+
 ## Que agrega la GUI
 
 - Elegir archivos o carpetas con botones en vez de escribir rutas.
 - Elegir visualmente la carpeta de salida.
-- Activar exportaciones con desenfoque y apertura automatica del reporte.
+- Elegir el tipo exacto de resultado antes de analizar.
 - Iniciar todo el analisis con un clic.
 - Reabrir el reporte desde la misma ventana.
 
 ## Estructura de salida
 
-- `output/faces/`: recortes de rostros detectados.
-- `output/redacted/`: copias opcionales con rostros difuminados.
-- `output/report/gallery.html`: reporte visual.
-- `output/report/summary.json`: resumen legible por maquinas.
-- `output/report/detections.csv`: manifiesto facil de abrir en Excel o similares.
+- `output/extract_faces_YYYYMMDD-HHMMSS/`: recortes de rostros y archivos de reporte.
+- `output/privacy_blur_YYYYMMDD-HHMMSS/`: imagenes o videos anonimizados.
+- `output/full_workspace_YYYYMMDD-HHMMSS/`: recortes, exportaciones difuminadas y reporte.
+
+Dentro de los modos con reporte:
+
+- `faces/`: recortes de rostros detectados.
+- `report/gallery.html`: reporte visual.
+- `report/summary.json`: resumen legible por maquinas.
+- `report/detections.csv`: manifiesto facil de abrir en Excel o similares.
+
+Dentro de los modos con anonimizado:
+
+- `redacted/`: exportaciones seguras para compartir.
 
 ## Referencia de comandos
 

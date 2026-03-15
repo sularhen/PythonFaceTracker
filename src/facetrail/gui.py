@@ -3,6 +3,7 @@ from __future__ import annotations
 import queue
 import threading
 import webbrowser
+from datetime import datetime
 from pathlib import Path
 from tkinter import BooleanVar, IntVar, StringVar, Tk, filedialog, messagebox, ttk
 
@@ -31,7 +32,7 @@ class FaceTrailApp:
         self.sample_every = IntVar(value=5)
         self.min_face_size = IntVar(value=64)
         self.cluster_threshold = StringVar(value="0.92")
-        self.save_redacted = BooleanVar(value=True)
+        self.mode = StringVar(value="full_workspace")
         self.auto_open = BooleanVar(value=True)
         self.status_text = StringVar(value="Choose a file or folder and press Start Scan.")
         self.summary_text = StringVar(value="No scan yet.")
@@ -93,6 +94,27 @@ class FaceTrailApp:
         ttk.Entry(output_card, textvariable=self.output_path).grid(row=1, column=0, sticky="ew", pady=(6, 10))
         ttk.Button(output_card, text="Choose Output", command=self._pick_output).grid(row=2, column=0, sticky="w")
 
+        mode_card = ttk.LabelFrame(outer, text="Choose What You Want", style="Card.TLabelframe", padding=16)
+        mode_card.pack(fill="x", pady=(16, 0))
+        ttk.Radiobutton(
+            mode_card,
+            text="Extract faces + report",
+            value="extract_faces",
+            variable=self.mode,
+        ).pack(anchor="w")
+        ttk.Radiobutton(
+            mode_card,
+            text="Blur faces in the original media",
+            value="privacy_blur",
+            variable=self.mode,
+        ).pack(anchor="w", pady=(6, 0))
+        ttk.Radiobutton(
+            mode_card,
+            text="Full workspace: crops + report + blurred exports",
+            value="full_workspace",
+            variable=self.mode,
+        ).pack(anchor="w", pady=(6, 0))
+
         settings_card = ttk.LabelFrame(outer, text="Automation Settings", style="Card.TLabelframe", padding=16)
         settings_card.pack(fill="x", pady=(16, 0))
         for index in range(4):
@@ -106,7 +128,6 @@ class FaceTrailApp:
         ttk.Entry(settings_card, textvariable=self.cluster_threshold, width=8).grid(row=1, column=2, sticky="w", pady=(6, 0))
         options = ttk.Frame(settings_card, style="FaceTrail.TFrame")
         options.grid(row=0, column=3, rowspan=2, sticky="e")
-        ttk.Checkbutton(options, text="Blur faces in exports", variable=self.save_redacted).pack(anchor="w")
         ttk.Checkbutton(options, text="Open report when finished", variable=self.auto_open).pack(anchor="w")
 
         actions = ttk.Frame(outer, style="FaceTrail.TFrame")
@@ -162,22 +183,26 @@ class FaceTrailApp:
 
         worker = threading.Thread(
             target=self._run_scan,
-            args=(input_value, self.output_path.get().strip() or "output", cluster_threshold),
+            args=(input_value, self.output_path.get().strip() or "output", cluster_threshold, self.mode.get()),
             daemon=True,
         )
         worker.start()
 
-    def _run_scan(self, input_value: str, output_value: str, cluster_threshold: float) -> None:
+    def _run_scan(self, input_value: str, output_value: str, cluster_threshold: float, mode: str) -> None:
         try:
+            target_output = self._build_mode_output(Path(output_value), mode)
+            options = self._mode_options(mode)
             analyzer = FaceTrailAnalyzer(
-                Path(output_value),
+                target_output,
                 sample_every=self.sample_every.get(),
                 min_face_size=self.min_face_size.get(),
                 cluster_threshold=cluster_threshold,
-                save_redacted=self.save_redacted.get(),
+                save_redacted=options["save_redacted"],
+                save_crops=options["save_crops"],
+                save_report=options["save_report"],
             )
             summary = analyzer.analyze(Path(input_value))
-            self.worker_queue.put(("success", {"summary": summary, "output": output_value}))
+            self.worker_queue.put(("success", {"summary": summary, "output": str(target_output), "mode": mode}))
         except Exception as exc:
             self.worker_queue.put(("error", str(exc)))
 
@@ -194,11 +219,12 @@ class FaceTrailApp:
         if kind == "success":
             data = payload if isinstance(payload, dict) else {}
             summary = data.get("summary", {})
+            mode = str(data.get("mode", "full_workspace"))
             report_path = Path(data.get("output", "output")) / "report" / "gallery.html"
-            self.last_report_path = report_path
-            self.status_text.set("Finished. Your report is ready.")
-            self.summary_text.set(self._format_summary(summary, report_path))
-            if self.auto_open.get():
+            self.last_report_path = report_path if report_path.exists() else None
+            self.status_text.set("Finished. Your files are ready.")
+            self.summary_text.set(self._format_summary(summary, Path(data.get("output", "output")), mode))
+            if self.auto_open.get() and self.last_report_path is not None:
                 webbrowser.open(report_path.resolve().as_uri())
         else:
             error_message = str(payload)
@@ -214,16 +240,35 @@ class FaceTrailApp:
             return
         webbrowser.open(self.last_report_path.resolve().as_uri())
 
-    def _format_summary(self, summary: dict, report_path: Path) -> str:
+    def _format_summary(self, summary: dict, output_path: Path, mode: str) -> str:
+        mode_labels = {
+            "extract_faces": "Extract faces + report",
+            "privacy_blur": "Blur faces in media",
+            "full_workspace": "Full workspace",
+        }
         lines = [
-            f"Report: {report_path}",
+            f"Mode: {mode_labels.get(mode, mode)}",
+            f"Output folder: {output_path}",
             f"Faces detected: {summary.get('faces_detected', 0)}",
             f"Clusters: {summary.get('people_clustered', 0)}",
             f"Images: {summary.get('input_images', 0)}",
             f"Videos: {summary.get('input_videos', 0)}",
             "",
-            "Top clusters:",
+            "Expected folders:",
         ]
+        if mode == "extract_faces":
+            lines.extend(["- faces", "- report"])
+        elif mode == "privacy_blur":
+            lines.extend(["- redacted"])
+        else:
+            lines.extend(["- faces", "- redacted", "- report"])
+
+        lines.extend(
+            [
+                "",
+            "Top clusters:",
+            ]
+        )
         for person in summary.get("people", [])[:5]:
             lines.append(
                 f"- Cluster {person['cluster_id']}: {person['detections']} detections | avg sharpness {person['avg_sharpness']}"
@@ -231,3 +276,19 @@ class FaceTrailApp:
         if not summary.get("people"):
             lines.append("- No clusters detected.")
         return "\n".join(lines)
+
+    def _mode_options(self, mode: str) -> dict[str, bool]:
+        if mode == "extract_faces":
+            return {"save_crops": True, "save_redacted": False, "save_report": True}
+        if mode == "privacy_blur":
+            return {"save_crops": False, "save_redacted": True, "save_report": False}
+        return {"save_crops": True, "save_redacted": True, "save_report": True}
+
+    def _build_mode_output(self, base_output: Path, mode: str) -> Path:
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        suffix = {
+            "extract_faces": "extract_faces",
+            "privacy_blur": "privacy_blur",
+            "full_workspace": "full_workspace",
+        }.get(mode, "run")
+        return base_output / f"{suffix}_{stamp}"
