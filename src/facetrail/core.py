@@ -107,6 +107,8 @@ class FaceTrailAnalyzer:
             media_stats[str(video_path)] = {"faces": len(video_detections), "frames": frame_count}
 
         self._cluster_detections(detections, embeddings)
+        if self.save_crops:
+            self._retain_best_crops(detections)
         summary = self._build_summary(detections, media_stats, images, videos)
         if self.save_report:
             self._write_outputs(summary, detections)
@@ -304,6 +306,26 @@ class FaceTrailAnalyzer:
                 continue
             redacted[y : y + h, x : x + w] = cv2.GaussianBlur(face, (35, 35), 18)
         return redacted
+
+    def _retain_best_crops(self, detections: list[Detection]) -> None:
+        best_by_cluster: dict[int, Detection] = {}
+        for detection in detections:
+            if not detection.crop_path:
+                continue
+            current_best = best_by_cluster.get(detection.cluster_id)
+            if current_best is None or (detection.sharpness, detection.confidence) > (
+                current_best.sharpness,
+                current_best.confidence,
+            ):
+                best_by_cluster[detection.cluster_id] = detection
+
+        keep_paths = {detection.crop_path for detection in best_by_cluster.values() if detection.crop_path}
+        for detection in detections:
+            if detection.crop_path and detection.crop_path not in keep_paths:
+                crop_file = Path(detection.crop_path)
+                if crop_file.exists():
+                    crop_file.unlink()
+                detection.crop_path = ""
 
     def _build_summary(
         self,

@@ -7,7 +7,7 @@ FaceTrail is a cross-platform tool for face extraction, clustering, visual repor
 ## Why this is useful
 
 - Review who appears across a media folder without scrubbing files manually.
-- Keep the sharpest crop of repeated face-like appearances.
+- Keep only the sharpest crop of each repeated face-like appearance.
 - Generate HTML, JSON, and CSV outputs for audits, curation, or local datasets.
 - Create privacy-safe exports before sharing footage publicly.
 - Let non-technical users run the full pipeline from a desktop window.
@@ -17,6 +17,7 @@ FaceTrail is a cross-platform tool for face extraction, clustering, visual repor
 - Works with single images, folders, and videos.
 - Uses OpenCV bundled Haar cascades automatically.
 - Extracts face crops and scores sharpness.
+- Keeps the best face crop per detected person cluster instead of saving endless duplicates.
 - Clusters similar detections into reusable groups.
 - Exports `gallery.html`, `summary.json`, and `detections.csv`.
 - Saves blurred privacy-safe image or video copies.
@@ -93,6 +94,7 @@ Available actions in the GUI:
 ## Output structure
 
 - `output/extract_faces_YYYYMMDD-HHMMSS/`: face crops plus report files.
+- Face crops are reduced to the best shot per detected face cluster.
 - `output/privacy_blur_YYYYMMDD-HHMMSS/`: blurred image or video output.
 - `output/full_workspace_YYYYMMDD-HHMMSS/`: crops, blurred copies, and report files.
 
@@ -159,7 +161,7 @@ FaceTrail es una herramienta multiplataforma para extraer rostros, agrupar apari
 ## Por que es util
 
 - Permite revisar quien aparece en una carpeta multimedia sin inspeccionar archivo por archivo.
-- Conserva la mejor captura de apariciones repetidas segun nitidez.
+- Conserva solo la mejor captura de apariciones repetidas segun nitidez.
 - Genera salidas HTML, JSON y CSV para auditorias, curacion o datasets locales.
 - Crea exportaciones anonimizadas antes de compartir material.
 - Permite que personas no tecnicas ejecuten todo desde una ventana local.
@@ -169,6 +171,7 @@ FaceTrail es una herramienta multiplataforma para extraer rostros, agrupar apari
 - Funciona con imagenes individuales, carpetas y videos.
 - Usa automaticamente las Haar cascades incluidas con OpenCV.
 - Extrae recortes de rostros y mide nitidez.
+- Conserva la mejor imagen por cluster de rostro en vez de guardar duplicados sin fin.
 - Agrupa detecciones similares en clusters reutilizables.
 - Exporta `gallery.html`, `summary.json` y `detections.csv`.
 - Guarda copias de imagen o video con desenfoque facial.
@@ -245,6 +248,7 @@ Acciones disponibles en la GUI:
 ## Estructura de salida
 
 - `output/extract_faces_YYYYMMDD-HHMMSS/`: recortes de rostros y archivos de reporte.
+- Los recortes quedan reducidos a la mejor foto por cluster de rostro detectado.
 - `output/privacy_blur_YYYYMMDD-HHMMSS/`: imagenes o videos anonimizados.
 - `output/full_workspace_YYYYMMDD-HHMMSS/`: recortes, exportaciones difuminadas y reporte.
 
