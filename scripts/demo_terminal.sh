@@ -17,4 +17,4 @@ echo "4. Running terminal scan"
 facetrail scan "$INPUT_PATH" --output "$OUTPUT_PATH" --engine auto --save-redacted --open-report
 
 echo "5. Launching desktop GUI"
-facetrail gui
+facetrail

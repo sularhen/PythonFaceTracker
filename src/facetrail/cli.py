@@ -18,11 +18,11 @@ def parse_cluster_threshold(value: str) -> float | None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="facetrail",
-        description="Scan image/video libraries, extract faces, cluster similar appearances, and create privacy-safe copies.",
+        description="Run without arguments to open the GUI, or use subcommands for terminal workflows.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command", required=False)
 
     scan_parser = subparsers.add_parser("scan", help="Analyze a file or folder and export a report.")
     scan_parser.add_argument("input", help="Image, video, or folder to process.")
@@ -79,6 +79,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command is None:
+        launch_gui("")
+        return 0
 
     if args.command == "scan":
         analyzer = FaceTrailAnalyzer(

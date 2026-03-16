@@ -16,4 +16,4 @@ Write-Host "4. Running terminal scan"
 facetrail scan $InputPath --output $OutputPath --engine auto --save-redacted --open-report
 
 Write-Host "5. Launching desktop GUI"
-facetrail gui
+facetrail

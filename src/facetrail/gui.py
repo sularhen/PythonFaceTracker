@@ -119,6 +119,7 @@ class FaceTrailApp:
         ttk.Button(output_buttons, text="Choose Output", command=self._pick_output).pack(side="left")
         ttk.Button(output_buttons, text="Open Output Folder", command=self._open_output_folder).pack(side="left", padx=(8, 0))
         ttk.Button(output_buttons, text="Open ZIP", command=self._open_last_zip).pack(side="left", padx=(8, 0))
+        ttk.Button(output_buttons, text="Save ZIP As...", command=self._save_last_zip_as).pack(side="left", padx=(8, 0))
 
         mode_card = ttk.LabelFrame(outer, text="Choose What You Want", style="Card.TLabelframe", padding=16)
         mode_card.pack(fill="x", pady=(16, 0))
@@ -437,4 +438,19 @@ class FaceTrailApp:
             "privacy_blur": "privacy_blur",
             "full_workspace": "full_workspace",
         }.get(mode, "run")
-        return base_output / f"{suffix}_{stamp}"
+        return base_output / suffix / stamp
+
+    def _save_last_zip_as(self) -> None:
+        if self.last_zip_path is None or not self.last_zip_path.exists():
+            messagebox.showinfo("FaceTrail", "No ZIP package is ready yet.")
+            return
+        destination = filedialog.asksaveasfilename(
+            title="Save result ZIP as",
+            defaultextension=".zip",
+            initialfile=self.last_zip_path.name,
+            filetypes=[("ZIP archive", "*.zip")],
+        )
+        if not destination:
+            return
+        shutil.copy2(self.last_zip_path, destination)
+        messagebox.showinfo("FaceTrail", f"ZIP saved to:\n{destination}")

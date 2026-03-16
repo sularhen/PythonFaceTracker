@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "facetrail"
-version = "1.2.0"
+version = "1.3.0"
 description = "FaceTrail is a cross-platform CLI for face extraction, clustering, visual reports, and privacy-safe media exports."
 readme = "README.md"
 requires-python = ">=3.10"

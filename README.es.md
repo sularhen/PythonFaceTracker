@@ -2,83 +2,67 @@
 
 ![FaceTrail banner](assets/banner.svg)
 
-FaceTrail es una CLI multiplataforma para extraer rostros, agrupar apariciones similares, generar reportes visuales y exportar copias anonimizadas. Convierte una carpeta de imagenes o videos en un espacio de trabajo realmente util, y ahora suma un motor pro con modelos oficiales de OpenCV Zoo, tracking temporal entre frames y una GUI de escritorio con preview y exportacion ZIP.
+FaceTrail es una CLI multiplataforma para extraer rostros, agrupar apariciones similares, generar reportes visuales y exportar copias anonimizadas. Ahora funciona mucho mas como una aplicacion real: ejecutas `facetrail`, se abre la GUI, eliges imagen o video, seleccionas el tipo de salida, y la misma app te deja el resultado en carpeta y tambien en ZIP.
 
 ## Que hace
 
 - Escanea imagenes individuales, carpetas completas o videos.
 - Detecta rostros con un backend pro YuNet + SFace cuando esta disponible.
 - Hace fallback a Haar si el motor pro no se puede inicializar.
-- Sigue rostros a lo largo del tiempo en video para mejorar continuidad entre frames.
-- Extrae recortes automaticamente y agrupa apariciones parecidas.
-- Calcula la mejor captura de cada grupo segun nitidez.
-- Genera un reporte HTML, un `summary.json` y un `detections.csv`.
-- Puede exportar copias anonimizadas con desenfoque facial.
-- Descarga automaticamente los modelos oficiales ONNX en la cache del usuario.
+- Sigue rostros a traves del tiempo en video.
+- Guarda solo la mejor foto por rostro detectado.
+- Genera reportes HTML, JSON y CSV.
+- Puede exportar copias anonimizadas.
+- Genera paquetes ZIP del resultado desde la GUI.
 
-## Instalacion
+## Como se usa ahora
 
-Linux y macOS:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-```
-
-En Windows PowerShell:
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -e .
-```
-
-## Uso rapido
+Si ya instalaste el proyecto:
 
 ```bash
-facetrail scan ./media --output ./output --save-redacted --engine auto
+facetrail
 ```
 
-Opciones utiles:
+Eso abre la GUI directamente.
 
-- `--sample-every 10`: procesa uno de cada 10 frames en videos.
-- `--min-face-size 96`: ignora rostros muy pequenos.
-- `--cluster-threshold auto`: usa el valor correcto segun el motor.
-- `--engine auto`: intenta usar el motor pro primero.
+Si descargaste un release o clonaste el repo:
+
+- Windows: ejecuta `facetrail.bat` o `facetrail.ps1`
+- Linux: ejecuta `bash facetrail.sh`
+
+Esos launchers crean una `.venv`, instalan FaceTrail y abren la GUI automaticamente.
+
+## Flujo de la GUI
+
+1. eliges una imagen, video o carpeta
+2. ves una preview del archivo
+3. eliges el tipo de salida
+4. pulsas `Start Scan`
+5. FaceTrail guarda el resultado en una carpeta segun el modo
+6. FaceTrail genera tambien un ZIP que puedes abrir, copiar o guardar en otra ruta
+
+## Modos de salida
+
+- `extract_faces`: guarda `faces/` y `report/`
+- `privacy_blur`: guarda `redacted/`
+- `full_workspace`: guarda `faces/`, `redacted/` y `report/`
+
+La estructura queda asi:
+
+- `output/extract_faces/YYYYMMDD-HHMMSS/`
+- `output/privacy_blur/YYYYMMDD-HHMMSS/`
+- `output/full_workspace/YYYYMMDD-HHMMSS/`
+
+Y el ZIP queda junto a la ejecucion correspondiente.
 
 ## Motor pro
 
-FaceTrail puede usar:
+FaceTrail usa:
 
 - YuNet para deteccion facial
-- SFace para embeddings y agrupamiento mas confiable
+- SFace para embeddings y clustering mas confiable
 
-Si no logra inicializar ese motor y estas usando `--engine auto`, vuelve al modo clasico automaticamente.
-
-## GUI
-
-La GUI permite:
-
-1. elegir una imagen, video o carpeta
-2. previsualizar el archivo elegido directamente
-3. elegir el tipo de salida
-4. ejecutar el analisis con un clic
-5. recibir una carpeta de salida dedicada
-6. generar tambien un ZIP descargable del resultado
-
-Tambien permite abrir:
-
-- el reporte HTML
-- la carpeta de salida
-- el archivo ZIP generado
-
-## Salidas
-
-- `output/extract_faces_YYYYMMDD-HHMMSS/`: recortes de rostros y archivos de reporte.
-- `output/privacy_blur_YYYYMMDD-HHMMSS/`: imagenes o videos anonimizados.
-- `output/full_workspace_YYYYMMDD-HHMMSS/`: recortes, exportaciones difuminadas y reporte.
-- `output/<modo_timestamp>.zip`: paquete ZIP descargable del resultado generado.
+Los modelos se descargan automaticamente en la cache del usuario la primera vez. Si falla y estas usando `auto`, vuelve al backend clasico.
 
 ## Flujo por terminal
 
@@ -89,7 +73,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .
 facetrail scan .\media --output .\output --engine auto --save-redacted --open-report
-facetrail gui
+facetrail
 ```
 
 Linux:
@@ -99,12 +83,5 @@ python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e .
 facetrail scan ./media --output ./output --engine auto --save-redacted --open-report
-facetrail gui
+facetrail
 ```
-
-## Limitaciones
-
-- El agrupamiento es ligero y basado en apariencia. No pretende ser biometria.
-- El backend clasico con Haar es portable, pero el motor pro es bastante mas confiable en uso real.
-- El rendimiento depende de la iluminacion, el angulo facial y la calidad del material.
-- La GUI de escritorio usa Tkinter y Pillow; en instalaciones minimas puede requerir instalacion normal de Python.

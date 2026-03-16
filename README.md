@@ -2,7 +2,7 @@
 
 ![FaceTrail banner](assets/banner.svg)
 
-FaceTrail is a cross-platform tool for face extraction, clustering, visual reports, and privacy-safe media exports. It can scan a single file or a whole folder, save face crops automatically, group similar detections, create blurred copies for sharing, and now offers a modern pro engine based on official OpenCV Zoo models plus a local desktop GUI with preview and ZIP export for people who do not want to work from the terminal.
+FaceTrail is a cross-platform tool for face extraction, clustering, visual reports, and privacy-safe media exports. It can scan a single file or a whole folder, save face crops automatically, group similar detections, create blurred copies for sharing, and now behaves much more like a real app: run `facetrail`, the GUI opens, you choose media, select the result type, and the app gives you both a structured output folder and a ZIP package you can download or move.
 
 ## Why this is useful
 
@@ -59,7 +59,7 @@ facetrail scan ./media --output ./output --save-redacted --open-report --engine 
 Desktop GUI:
 
 ```bash
-facetrail gui
+facetrail
 ```
 
 or:
@@ -73,7 +73,7 @@ facetrail-gui
 Run the GUI with:
 
 ```bash
-facetrail gui
+facetrail
 ```
 
 Then the app will let you:
@@ -109,10 +109,10 @@ Available engines in the GUI:
 
 ## Output structure
 
-- `output/extract_faces_YYYYMMDD-HHMMSS/`: face crops plus report files.
+- `output/extract_faces/YYYYMMDD-HHMMSS/`: face crops plus report files.
 - Face crops are reduced to the best shot per detected face cluster.
-- `output/privacy_blur_YYYYMMDD-HHMMSS/`: blurred image or video output.
-- `output/full_workspace_YYYYMMDD-HHMMSS/`: crops, blurred copies, and report files.
+- `output/privacy_blur/YYYYMMDD-HHMMSS/`: blurred image or video output.
+- `output/full_workspace/YYYYMMDD-HHMMSS/`: crops, blurred copies, and report files.
 
 Inside report-enabled modes:
 
@@ -127,11 +127,27 @@ Inside blur-enabled modes:
 
 The GUI can also create:
 
-- `output/<mode_timestamp>.zip`: a downloadable ZIP package of the generated result folder.
+- `output/<mode>/<timestamp>.zip`: a downloadable ZIP package of the generated result folder.
+
+## Release and clone workflow
+
+If you install the project, just run:
+
+```bash
+facetrail
+```
+
+If you download a release zip or clone the repository, you can launch the app directly with:
+
+- Windows: `facetrail.bat` or `facetrail.ps1`
+- Linux: `bash facetrail.sh`
+
+Those launchers create a local `.venv`, install the project, and open the GUI for you.
 
 ## Command reference
 
 ```text
+facetrail
 facetrail scan INPUT [--output OUTPUT] [--sample-every N] [--min-face-size PX] [--cluster-threshold FLOAT|auto] [--engine auto|pro|classic] [--save-redacted] [--open-report]
 facetrail gui [--start-input PATH]
 facetrail-gui
@@ -175,7 +191,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .
 facetrail scan .\media --output .\output --engine auto --save-redacted --open-report
-facetrail gui
+facetrail
 ```
 
 Linux:
@@ -185,7 +201,7 @@ python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e .
 facetrail scan ./media --output ./output --engine auto --save-redacted --open-report
-facetrail gui
+facetrail
 ```
 
 ## Practical use cases
@@ -208,7 +224,7 @@ facetrail gui
 
 ![FaceTrail banner](assets/banner.svg)
 
-FaceTrail es una herramienta multiplataforma para extraer rostros, agrupar apariciones similares, generar reportes visuales y exportar copias anonimizadas. Puede analizar un archivo o una carpeta completa, guardar recortes automaticamente, agrupar detecciones parecidas, crear copias con desenfoque para compartir y ahora tambien incluye un motor pro basado en modelos oficiales de OpenCV Zoo, ademas de una interfaz de escritorio para personas que no quieren usar terminal.
+FaceTrail es una herramienta multiplataforma para extraer rostros, agrupar apariciones similares, generar reportes visuales y exportar copias anonimizadas. Puede analizar un archivo o una carpeta completa, guardar recortes automaticamente, agrupar detecciones parecidas, crear copias con desenfoque para compartir y ahora se comporta mucho mas como una aplicacion real: ejecutas `facetrail`, se abre la GUI, eliges el archivo, seleccionas el tipo de salida y la misma app te deja el resultado en carpeta y en ZIP.
 
 ## Por que es util
 
@@ -265,7 +281,7 @@ facetrail scan ./media --output ./output --save-redacted --open-report --engine 
 GUI de escritorio:
 
 ```bash
-facetrail gui
+facetrail
 ```
 
 o:
@@ -279,7 +295,7 @@ facetrail-gui
 Ejecuta la GUI con:
 
 ```bash
-facetrail gui
+facetrail
 ```
 
 Luego la aplicacion te deja:
@@ -315,10 +331,10 @@ Motores disponibles en la GUI:
 
 ## Estructura de salida
 
-- `output/extract_faces_YYYYMMDD-HHMMSS/`: recortes de rostros y archivos de reporte.
+- `output/extract_faces/YYYYMMDD-HHMMSS/`: recortes de rostros y archivos de reporte.
 - Los recortes quedan reducidos a la mejor foto por cluster de rostro detectado.
-- `output/privacy_blur_YYYYMMDD-HHMMSS/`: imagenes o videos anonimizados.
-- `output/full_workspace_YYYYMMDD-HHMMSS/`: recortes, exportaciones difuminadas y reporte.
+- `output/privacy_blur/YYYYMMDD-HHMMSS/`: imagenes o videos anonimizados.
+- `output/full_workspace/YYYYMMDD-HHMMSS/`: recortes, exportaciones difuminadas y reporte.
 
 Dentro de los modos con reporte:
 
@@ -333,11 +349,27 @@ Dentro de los modos con anonimizado:
 
 La GUI tambien puede crear:
 
-- `output/<modo_timestamp>.zip`: paquete ZIP descargable del resultado generado.
+- `output/<modo>/<timestamp>.zip`: paquete ZIP descargable del resultado generado.
+
+## Flujo para releases o repos clonados
+
+Si instalas el proyecto, basta con ejecutar:
+
+```bash
+facetrail
+```
+
+Si descargas un release zip o clonas el repo, puedes abrir la app directamente con:
+
+- Windows: `facetrail.bat` o `facetrail.ps1`
+- Linux: `bash facetrail.sh`
+
+Esos launchers crean una `.venv`, instalan el proyecto y abren la GUI automaticamente.
 
 ## Referencia de comandos
 
 ```text
+facetrail
 facetrail scan INPUT [--output OUTPUT] [--sample-every N] [--min-face-size PX] [--cluster-threshold FLOAT|auto] [--engine auto|pro|classic] [--save-redacted] [--open-report]
 facetrail gui [--start-input PATH]
 facetrail-gui
@@ -381,7 +413,7 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e .
 facetrail scan .\media --output .\output --engine auto --save-redacted --open-report
-facetrail gui
+facetrail
 ```
 
 Linux:
@@ -391,7 +423,7 @@ python -m venv .venv
 source .venv/bin/activate
 python -m pip install -e .
 facetrail scan ./media --output ./output --engine auto --save-redacted --open-report
-facetrail gui
+facetrail
 ```
 
 ## Casos de uso

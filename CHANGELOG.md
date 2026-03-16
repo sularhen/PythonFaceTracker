@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0 - 2026-03-15
+
+- Made `facetrail` open the desktop GUI by default.
+- Added root launchers for cloned repos and release packages on Windows and Linux.
+- Added GUI ZIP export copy via "Save ZIP As...".
+- Organized output history inside per-mode folders.
+
 ## 1.2.0 - 2026-03-15
 
 - Added temporal face tracking across video frames.

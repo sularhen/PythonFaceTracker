@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 STAGING = DIST / "staging"
 PROJECT_NAME = "facetrail"
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 
 INCLUDE_PATHS = [
     "README.md",
@@ -18,6 +18,9 @@ INCLUDE_PATHS = [
     "LICENSE",
     "CHANGELOG.md",
     "pyproject.toml",
+    "facetrail.bat",
+    "facetrail.ps1",
+    "facetrail.sh",
     "python_code_for_images",
     "python_code_for_videos",
     "assets",
