@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0 - 2026-03-15
+
+- Added temporal face tracking across video frames.
+- Added GUI media preview for images and video first frames.
+- Added automatic ZIP export packages from the GUI output.
+- Added quick-open actions for output folders and ZIP files.
+- Added terminal walkthrough support in the documentation.
+
 ## 1.1.0 - 2026-03-15
 
 - Added a pro engine based on OpenCV YuNet face detection and SFace recognition.

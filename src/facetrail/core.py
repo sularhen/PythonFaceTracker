@@ -35,8 +35,17 @@ class Detection:
     sharpness: float
     confidence: float
     cluster_id: int = -1
+    track_id: int = -1
     crop_path: str = ""
     redacted_path: str = ""
+
+
+@dataclass
+class TrackState:
+    track_id: int
+    embedding: np.ndarray
+    bbox: tuple[int, int, int, int]
+    last_frame_index: int
 
 
 class FaceTrailAnalyzer:
@@ -196,6 +205,8 @@ class FaceTrailAnalyzer:
         frame_index = 0
         detections: list[Detection] = []
         embeddings: list[np.ndarray] = []
+        active_tracks: dict[int, TrackState] = {}
+        next_track_id = 0
         effective_sample_every = 1 if writer is not None else self.sample_every
         while True:
             ok, frame = cap.read()
@@ -212,6 +223,13 @@ class FaceTrailAnalyzer:
                     "video",
                     frame_index,
                     timestamp_seconds,
+                )
+                next_track_id = self._assign_tracks(
+                    current_detections,
+                    current_embeddings,
+                    active_tracks,
+                    next_track_id,
+                    frame_index,
                 )
                 detections.extend(current_detections)
                 embeddings.extend(current_embeddings)
@@ -432,6 +450,81 @@ class FaceTrailAnalyzer:
             return 0.0
         return float(np.dot(a, b) / denominator)
 
+    def _assign_tracks(
+        self,
+        detections: list[Detection],
+        embeddings: list[np.ndarray],
+        active_tracks: dict[int, TrackState],
+        next_track_id: int,
+        frame_index: int,
+    ) -> int:
+        stale_after = max(self.sample_every * 8, 24)
+        for track_id in list(active_tracks):
+            if frame_index - active_tracks[track_id].last_frame_index > stale_after:
+                del active_tracks[track_id]
+
+        used_tracks: set[int] = set()
+        for detection, embedding in zip(detections, embeddings):
+            best_track: TrackState | None = None
+            best_score = -1.0
+            for track in active_tracks.values():
+                if track.track_id in used_tracks:
+                    continue
+                similarity = self._match_similarity(embedding, track.embedding)
+                if similarity < self._track_similarity_threshold():
+                    continue
+                spatial_score = self._track_spatial_score(detection.bbox, track.bbox)
+                combined = similarity * 0.8 + spatial_score * 0.2
+                if combined > best_score:
+                    best_score = combined
+                    best_track = track
+
+            if best_track is None:
+                detection.track_id = next_track_id
+                active_tracks[next_track_id] = TrackState(
+                    track_id=next_track_id,
+                    embedding=self._normalize_embedding(embedding),
+                    bbox=detection.bbox,
+                    last_frame_index=frame_index,
+                )
+                used_tracks.add(next_track_id)
+                next_track_id += 1
+                continue
+
+            detection.track_id = best_track.track_id
+            best_track.embedding = self._normalize_embedding(best_track.embedding * 0.6 + embedding * 0.4)
+            best_track.bbox = detection.bbox
+            best_track.last_frame_index = frame_index
+            used_tracks.add(best_track.track_id)
+
+        return next_track_id
+
+    def _track_similarity_threshold(self) -> float:
+        if self.backend_name == "opencv_yunet_sface":
+            return max(self.cluster_threshold + 0.03, 0.42)
+        return min(self.cluster_threshold + 0.03, 0.97)
+
+    def _track_spatial_score(
+        self,
+        current_bbox: tuple[int, int, int, int],
+        previous_bbox: tuple[int, int, int, int],
+    ) -> float:
+        iou = self._iou(current_bbox, previous_bbox)
+        cx1 = current_bbox[0] + current_bbox[2] / 2
+        cy1 = current_bbox[1] + current_bbox[3] / 2
+        cx2 = previous_bbox[0] + previous_bbox[2] / 2
+        cy2 = previous_bbox[1] + previous_bbox[3] / 2
+        distance = float(np.hypot(cx1 - cx2, cy1 - cy2))
+        reference = max(current_bbox[2], current_bbox[3], previous_bbox[2], previous_bbox[3], 1)
+        center_score = max(0.0, 1.0 - distance / (reference * 2.5))
+        return max(iou, center_score)
+
+    def _normalize_embedding(self, embedding: np.ndarray) -> np.ndarray:
+        norm = float(np.linalg.norm(embedding))
+        if norm == 0:
+            return embedding
+        return embedding / norm
+
     def _redact_frame(self, frame: np.ndarray, detections: list[Detection]) -> np.ndarray:
         redacted = frame.copy()
         for detection in detections:
@@ -495,6 +588,7 @@ class FaceTrailAnalyzer:
             "input_videos": len(videos),
             "media": media_stats,
             "faces_detected": len(detections),
+            "tracks_detected": len({detection.track_id for detection in detections if detection.track_id >= 0}),
             "people_clustered": len(people),
             "cluster_threshold": self.cluster_threshold,
             "people": people,
@@ -693,6 +787,7 @@ class FaceTrailAnalyzer:
       <div class="stat"><h3>Images</h3><p>{summary['input_images']}</p></div>
       <div class="stat"><h3>Videos</h3><p>{summary['input_videos']}</p></div>
       <div class="stat"><h3>Faces</h3><p>{summary['faces_detected']}</p></div>
+      <div class="stat"><h3>Tracks</h3><p>{summary['tracks_detected']}</p></div>
       <div class="stat"><h3>Clusters</h3><p>{summary['people_clustered']}</p></div>
     </section>
     <section class="panels">

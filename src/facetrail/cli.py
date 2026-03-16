@@ -90,7 +90,11 @@ def main(argv: list[str] | None = None) -> int:
             engine=args.engine,
         )
         summary = analyzer.analyze(Path(args.input))
-        print(f"FaceTrail finished. Faces: {summary['faces_detected']} | Clusters: {summary['people_clustered']}")
+        print(
+            "FaceTrail finished. "
+            f"Faces: {summary['faces_detected']} | Tracks: {summary.get('tracks_detected', 0)} | "
+            f"Clusters: {summary['people_clustered']}"
+        )
         print(f"Engine: {summary['engine']}")
         report_path = Path(args.output) / "report" / "gallery.html"
         print(f"Report: {report_path}")

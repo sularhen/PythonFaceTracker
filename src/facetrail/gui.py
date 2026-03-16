@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+import os
 import queue
+import shutil
+import subprocess
+import sys
 import threading
 import webbrowser
 from datetime import datetime
 from pathlib import Path
 from tkinter import BooleanVar, IntVar, StringVar, Tk, filedialog, messagebox, ttk
 
-from facetrail.core import FaceTrailAnalyzer
+import cv2
+from PIL import Image, ImageTk
+
+from facetrail.core import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, FaceTrailAnalyzer
 
 
 def launch_gui(start_input: str = "") -> None:
@@ -24,8 +31,8 @@ class FaceTrailApp:
     def __init__(self, start_input: str = "") -> None:
         self.root = Tk()
         self.root.title("FaceTrail")
-        self.root.geometry("860x640")
-        self.root.minsize(760, 580)
+        self.root.geometry("980x760")
+        self.root.minsize(860, 660)
 
         self.input_path = StringVar(value=start_input)
         self.output_path = StringVar(value="output")
@@ -35,13 +42,20 @@ class FaceTrailApp:
         self.mode = StringVar(value="full_workspace")
         self.engine = StringVar(value="auto")
         self.auto_open = BooleanVar(value=True)
-        self.status_text = StringVar(value="Choose a file or folder and press Start Scan.")
+        self.create_zip = BooleanVar(value=True)
+        self.status_text = StringVar(value="Choose an image, video, or folder and press Start Scan.")
         self.summary_text = StringVar(value="No scan yet.")
+        self.preview_caption = StringVar(value="No media selected.")
         self.run_button: ttk.Button | None = None
         self.last_report_path: Path | None = None
-        self.worker_queue: queue.Queue[tuple[str, str | dict]] = queue.Queue()
+        self.last_output_path: Path | None = None
+        self.last_zip_path: Path | None = None
+        self.preview_photo: ImageTk.PhotoImage | None = None
+        self.preview_label: ttk.Label | None = None
+        self.worker_queue: queue.Queue[tuple[str, dict | str]] = queue.Queue()
 
         self._build_layout()
+        self._refresh_preview()
         self.root.after(150, self._poll_worker_queue)
 
     def run(self) -> None:
@@ -57,6 +71,7 @@ class FaceTrailApp:
         style.configure("Card.TLabelframe.Label", background="#fff8ef", foreground="#132930", font=("Segoe UI", 11, "bold"))
         style.configure("Primary.TButton", font=("Segoe UI", 11, "bold"))
         style.configure("Status.TLabel", background="#132930", foreground="#fff8ef", font=("Segoe UI", 10))
+        style.configure("Preview.TLabel", background="#f0e7d8", foreground="#52616c", anchor="center", justify="center")
 
         outer = ttk.Frame(self.root, style="FaceTrail.TFrame", padding=18)
         outer.pack(fill="both", expand=True)
@@ -66,15 +81,15 @@ class FaceTrailApp:
         ttk.Label(hero, text="FaceTrail", foreground="#fff8ef", background="#132930", font=("Segoe UI", 28, "bold")).pack(anchor="w")
         ttk.Label(
             hero,
-            text="Desktop face review for people who just want to pick media, click start, and get a usable report.",
+            text="Pick media, choose what you want, preview it, scan it, and export a ready-to-share result package.",
             foreground="#d8d2c9",
             background="#132930",
             font=("Segoe UI", 11),
-            wraplength=760,
+            wraplength=860,
         ).pack(anchor="w", pady=(8, 0))
 
         body = ttk.Frame(outer, style="FaceTrail.TFrame")
-        body.pack(fill="both", expand=True, pady=(16, 0))
+        body.pack(fill="both", expand=False, pady=(16, 0))
         body.columnconfigure(0, weight=1)
         body.columnconfigure(1, weight=1)
 
@@ -87,28 +102,28 @@ class FaceTrailApp:
         source_buttons.grid(row=2, column=0, sticky="w")
         ttk.Button(source_buttons, text="Choose Folder", command=self._pick_folder).pack(side="left")
         ttk.Button(source_buttons, text="Choose File", command=self._pick_file).pack(side="left", padx=(8, 0))
+        ttk.Button(source_buttons, text="Refresh Preview", command=self._refresh_preview).pack(side="left", padx=(8, 0))
 
-        output_card = ttk.LabelFrame(body, text="Results", style="Card.TLabelframe", padding=16)
-        output_card.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+        preview_card = ttk.LabelFrame(body, text="Preview", style="Card.TLabelframe", padding=16)
+        preview_card.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+        self.preview_label = ttk.Label(preview_card, textvariable=self.preview_caption, style="Preview.TLabel", width=40)
+        self.preview_label.pack(fill="both", expand=True, ipady=70)
+
+        output_card = ttk.LabelFrame(outer, text="Results", style="Card.TLabelframe", padding=16)
+        output_card.pack(fill="x", pady=(16, 0))
         output_card.columnconfigure(0, weight=1)
         ttk.Label(output_card, text="Output folder", background="#fff8ef").grid(row=0, column=0, sticky="w")
         ttk.Entry(output_card, textvariable=self.output_path).grid(row=1, column=0, sticky="ew", pady=(6, 10))
-        ttk.Button(output_card, text="Choose Output", command=self._pick_output).grid(row=2, column=0, sticky="w")
+        output_buttons = ttk.Frame(output_card, style="FaceTrail.TFrame")
+        output_buttons.grid(row=2, column=0, sticky="w")
+        ttk.Button(output_buttons, text="Choose Output", command=self._pick_output).pack(side="left")
+        ttk.Button(output_buttons, text="Open Output Folder", command=self._open_output_folder).pack(side="left", padx=(8, 0))
+        ttk.Button(output_buttons, text="Open ZIP", command=self._open_last_zip).pack(side="left", padx=(8, 0))
 
         mode_card = ttk.LabelFrame(outer, text="Choose What You Want", style="Card.TLabelframe", padding=16)
         mode_card.pack(fill="x", pady=(16, 0))
-        ttk.Radiobutton(
-            mode_card,
-            text="Extract faces + report",
-            value="extract_faces",
-            variable=self.mode,
-        ).pack(anchor="w")
-        ttk.Radiobutton(
-            mode_card,
-            text="Blur faces in the original media",
-            value="privacy_blur",
-            variable=self.mode,
-        ).pack(anchor="w", pady=(6, 0))
+        ttk.Radiobutton(mode_card, text="Extract faces + report", value="extract_faces", variable=self.mode).pack(anchor="w")
+        ttk.Radiobutton(mode_card, text="Blur faces in the original media", value="privacy_blur", variable=self.mode).pack(anchor="w", pady=(6, 0))
         ttk.Radiobutton(
             mode_card,
             text="Full workspace: crops + report + blurred exports",
@@ -147,10 +162,11 @@ class FaceTrailApp:
         ttk.Label(settings_card, text="Minimum face size", background="#fff8ef").grid(row=0, column=1, sticky="w")
         ttk.Spinbox(settings_card, from_=24, to=512, textvariable=self.min_face_size, width=8).grid(row=1, column=1, sticky="w", pady=(6, 0))
         ttk.Label(settings_card, text="Cluster threshold", background="#fff8ef").grid(row=0, column=2, sticky="w")
-        ttk.Entry(settings_card, textvariable=self.cluster_threshold, width=8).grid(row=1, column=2, sticky="w", pady=(6, 0))
+        ttk.Entry(settings_card, textvariable=self.cluster_threshold, width=10).grid(row=1, column=2, sticky="w", pady=(6, 0))
         options = ttk.Frame(settings_card, style="FaceTrail.TFrame")
         options.grid(row=0, column=3, rowspan=2, sticky="e")
         ttk.Checkbutton(options, text="Open report when finished", variable=self.auto_open).pack(anchor="w")
+        ttk.Checkbutton(options, text="Create ZIP package", variable=self.create_zip).pack(anchor="w")
 
         actions = ttk.Frame(outer, style="FaceTrail.TFrame")
         actions.pack(fill="x", pady=(16, 0))
@@ -176,11 +192,13 @@ class FaceTrailApp:
         selected = filedialog.askdirectory(title="Choose a media folder")
         if selected:
             self.input_path.set(selected)
+            self._refresh_preview()
 
     def _pick_file(self) -> None:
         selected = filedialog.askopenfilename(title="Choose an image or video")
         if selected:
             self.input_path.set(selected)
+            self._refresh_preview()
 
     def _pick_output(self) -> None:
         selected = filedialog.askdirectory(title="Choose an output folder")
@@ -190,7 +208,7 @@ class FaceTrailApp:
     def _start_scan(self) -> None:
         input_value = self.input_path.get().strip()
         if not input_value:
-            messagebox.showerror("FaceTrail", "Pick a file or folder first.")
+            messagebox.showerror("FaceTrail", "Pick a file, video, or folder first.")
             return
         cluster_raw = self.cluster_threshold.get().strip().lower()
         cluster_threshold = None
@@ -203,7 +221,7 @@ class FaceTrailApp:
 
         if self.run_button is not None:
             self.run_button.configure(state="disabled")
-        self.status_text.set("Scanning media and building the report...")
+        self.status_text.set("Scanning media, tracking faces, and preparing outputs...")
         self.summary_text.set("Working...")
 
         worker = threading.Thread(
@@ -214,6 +232,7 @@ class FaceTrailApp:
                 cluster_threshold,
                 self.mode.get(),
                 self.engine.get(),
+                self.create_zip.get(),
             ),
             daemon=True,
         )
@@ -226,6 +245,7 @@ class FaceTrailApp:
         cluster_threshold: float | None,
         mode: str,
         engine: str,
+        create_zip: bool,
     ) -> None:
         try:
             target_output = self._build_mode_output(Path(output_value), mode)
@@ -241,7 +261,18 @@ class FaceTrailApp:
                 engine=engine,
             )
             summary = analyzer.analyze(Path(input_value))
-            self.worker_queue.put(("success", {"summary": summary, "output": str(target_output), "mode": mode}))
+            zip_path = self._create_zip_package(target_output) if create_zip else None
+            self.worker_queue.put(
+                (
+                    "success",
+                    {
+                        "summary": summary,
+                        "output": str(target_output),
+                        "mode": mode,
+                        "zip_path": str(zip_path) if zip_path else "",
+                    },
+                )
+            )
         except Exception as exc:
             self.worker_queue.put(("error", str(exc)))
 
@@ -259,12 +290,16 @@ class FaceTrailApp:
             data = payload if isinstance(payload, dict) else {}
             summary = data.get("summary", {})
             mode = str(data.get("mode", "full_workspace"))
-            report_path = Path(data.get("output", "output")) / "report" / "gallery.html"
+            output_path = Path(data.get("output", "output"))
+            zip_path = Path(data["zip_path"]) if data.get("zip_path") else None
+            report_path = output_path / "report" / "gallery.html"
+            self.last_output_path = output_path
+            self.last_zip_path = zip_path if zip_path and zip_path.exists() else None
             self.last_report_path = report_path if report_path.exists() else None
-            self.status_text.set("Finished. Your files are ready.")
-            self.summary_text.set(self._format_summary(summary, Path(data.get("output", "output")), mode))
+            self.status_text.set("Finished. Your files and export package are ready.")
+            self.summary_text.set(self._format_summary(summary, output_path, mode, self.last_zip_path))
             if self.auto_open.get() and self.last_report_path is not None:
-                webbrowser.open(report_path.resolve().as_uri())
+                webbrowser.open(self.last_report_path.resolve().as_uri())
         else:
             error_message = str(payload)
             self.status_text.set("Scan failed.")
@@ -273,13 +308,82 @@ class FaceTrailApp:
 
         self.root.after(150, self._poll_worker_queue)
 
+    def _refresh_preview(self) -> None:
+        if self.preview_label is None:
+            return
+        raw_path = self.input_path.get().strip()
+        if not raw_path:
+            self._set_preview_state("No media selected.", None)
+            return
+
+        path = Path(raw_path)
+        if not path.exists():
+            self._set_preview_state("Path does not exist yet.", None)
+            return
+        if path.is_dir():
+            self._set_preview_state("Folder selected.\nFaceTrail will scan supported images and videos inside it.", None)
+            return
+
+        frame = self._load_preview_frame(path)
+        if frame is None:
+            self._set_preview_state("Preview unavailable for this file.", None)
+            return
+
+        image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        image.thumbnail((360, 220))
+        preview = ImageTk.PhotoImage(image=image)
+        self.preview_photo = preview
+        caption = f"{path.name}\nPreview loaded"
+        self._set_preview_state(caption, preview)
+
+    def _load_preview_frame(self, path: Path) -> np.ndarray | None:
+        suffix = path.suffix.lower()
+        if suffix in IMAGE_EXTENSIONS:
+            return cv2.imread(str(path))
+        if suffix in VIDEO_EXTENSIONS:
+            cap = cv2.VideoCapture(str(path))
+            ok, frame = cap.read()
+            cap.release()
+            return frame if ok else None
+        return None
+
+    def _set_preview_state(self, caption: str, preview: ImageTk.PhotoImage | None) -> None:
+        self.preview_caption.set(caption)
+        self.preview_photo = preview
+        if self.preview_label is not None:
+            self.preview_label.configure(image=preview)
+
     def _open_last_report(self) -> None:
         if self.last_report_path is None or not self.last_report_path.exists():
             messagebox.showinfo("FaceTrail", "No report is ready yet.")
             return
         webbrowser.open(self.last_report_path.resolve().as_uri())
 
-    def _format_summary(self, summary: dict, output_path: Path, mode: str) -> str:
+    def _open_output_folder(self) -> None:
+        if self.last_output_path is None or not self.last_output_path.exists():
+            messagebox.showinfo("FaceTrail", "No output folder is ready yet.")
+            return
+        self._open_path(self.last_output_path)
+
+    def _open_last_zip(self) -> None:
+        if self.last_zip_path is None or not self.last_zip_path.exists():
+            messagebox.showinfo("FaceTrail", "No ZIP package is ready yet.")
+            return
+        self._open_path(self.last_zip_path)
+
+    def _open_path(self, path: Path) -> None:
+        if sys.platform.startswith("win"):
+            os.startfile(str(path))
+            return
+        opener = "open" if sys.platform == "darwin" else "xdg-open"
+        subprocess.Popen([opener, str(path)])
+
+    def _create_zip_package(self, output_path: Path) -> Path:
+        archive_base = output_path.parent / output_path.name
+        archive_path = Path(shutil.make_archive(str(archive_base), "zip", root_dir=output_path.parent, base_dir=output_path.name))
+        return archive_path
+
+    def _format_summary(self, summary: dict, output_path: Path, mode: str, zip_path: Path | None) -> str:
         mode_labels = {
             "extract_faces": "Extract faces + report",
             "privacy_blur": "Blur faces in media",
@@ -288,8 +392,10 @@ class FaceTrailApp:
         lines = [
             f"Mode: {mode_labels.get(mode, mode)}",
             f"Output folder: {output_path}",
+            f"ZIP package: {zip_path if zip_path else 'disabled'}",
             f"Engine: {summary.get('engine', 'unknown')}",
             f"Faces detected: {summary.get('faces_detected', 0)}",
+            f"Tracks detected: {summary.get('tracks_detected', 0)}",
             f"Clusters: {summary.get('people_clustered', 0)}",
             f"Images: {summary.get('input_images', 0)}",
             f"Videos: {summary.get('input_videos', 0)}",
@@ -306,7 +412,7 @@ class FaceTrailApp:
         lines.extend(
             [
                 "",
-            "Top clusters:",
+                "Top clusters:",
             ]
         )
         for person in summary.get("people", [])[:5]:

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "facetrail"
-version = "1.1.0"
+version = "1.2.0"
 description = "FaceTrail is a cross-platform CLI for face extraction, clustering, visual reports, and privacy-safe media exports."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -15,7 +15,8 @@ authors = [
 dependencies = [
   "numpy>=1.24",
   "opencv-python>=4.9",
-  "platformdirs>=4.0"
+  "platformdirs>=4.0",
+  "Pillow>=10.0"
 ]
 keywords = ["opencv", "face-detection", "video", "privacy", "cli"]
 

@@ -2,7 +2,7 @@
 
 ![FaceTrail banner](assets/banner.svg)
 
-FaceTrail is a cross-platform tool for face extraction, clustering, visual reports, and privacy-safe media exports. It can scan a single file or a whole folder, save face crops automatically, group similar detections, create blurred copies for sharing, and now offers a modern pro engine based on official OpenCV Zoo models plus a local desktop GUI for people who do not want to work from the terminal.
+FaceTrail is a cross-platform tool for face extraction, clustering, visual reports, and privacy-safe media exports. It can scan a single file or a whole folder, save face crops automatically, group similar detections, create blurred copies for sharing, and now offers a modern pro engine based on official OpenCV Zoo models plus a local desktop GUI with preview and ZIP export for people who do not want to work from the terminal.
 
 ## Why this is useful
 
@@ -18,12 +18,15 @@ FaceTrail is a cross-platform tool for face extraction, clustering, visual repor
 - Works with single images, folders, and videos.
 - Uses an automatic `pro` backend with YuNet + SFace when available.
 - Falls back to the classic Haar backend if the pro engine cannot be initialized.
+- Adds temporal tracking across video frames to stabilize recurring faces.
 - Extracts face crops and scores sharpness.
 - Keeps the best face crop per detected person cluster instead of saving endless duplicates.
 - Clusters similar detections into reusable groups.
 - Exports `gallery.html`, `summary.json`, and `detections.csv`.
 - Saves blurred privacy-safe image or video copies.
 - Includes a desktop GUI with file pickers and one-click scan flow.
+- Shows a visual preview of the selected image or the first video frame in the GUI.
+- Creates a downloadable ZIP package of the generated result from the GUI.
 - Can open the final report automatically in the browser.
 - Downloads and caches the official OpenCV Zoo ONNX models automatically.
 
@@ -76,9 +79,11 @@ facetrail gui
 Then the app will let you:
 
 1. choose an image, video, or folder
-2. choose what you want FaceTrail to do
-3. press Start Scan
-4. get the result inside a dedicated output folder for that choice
+2. preview the selected media directly in the GUI
+3. choose what you want FaceTrail to do
+4. press Start Scan
+5. get the result inside a dedicated output folder for that choice
+6. receive a ZIP package of that output that you can share or move easily
 
 Available actions in the GUI:
 
@@ -95,10 +100,12 @@ Available engines in the GUI:
 ## What the GUI adds
 
 - Choose files or folders with buttons instead of typing paths.
+- Preview images and the first frame of videos before scanning.
 - Pick the output folder visually.
 - Choose the exact result type before scanning.
 - Start the full scan with one click.
 - Open the generated report again from the same window.
+- Open the output folder or generated ZIP package directly from the same window.
 
 ## Output structure
 
@@ -117,6 +124,10 @@ Inside report-enabled modes:
 Inside blur-enabled modes:
 
 - `redacted/`: privacy-safe image or video exports.
+
+The GUI can also create:
+
+- `output/<mode_timestamp>.zip`: a downloadable ZIP package of the generated result folder.
 
 ## Command reference
 
@@ -155,6 +166,28 @@ Build them with:
 python scripts/build_release.py
 ```
 
+## Terminal walkthrough
+
+Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -e .
+facetrail scan .\media --output .\output --engine auto --save-redacted --open-report
+facetrail gui
+```
+
+Linux:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+facetrail scan ./media --output ./output --engine auto --save-redacted --open-report
+facetrail gui
+```
+
 ## Practical use cases
 
 - Privacy pass before sending event footage to clients or friends.
@@ -191,12 +224,15 @@ FaceTrail es una herramienta multiplataforma para extraer rostros, agrupar apari
 - Funciona con imagenes individuales, carpetas y videos.
 - Usa un backend `pro` con YuNet + SFace cuando esta disponible.
 - Hace fallback al backend clasico con Haar si el motor pro no se puede inicializar.
+- Agrega tracking temporal entre frames de video para estabilizar rostros recurrentes.
 - Extrae recortes de rostros y mide nitidez.
 - Conserva la mejor imagen por cluster de rostro en vez de guardar duplicados sin fin.
 - Agrupa detecciones similares en clusters reutilizables.
 - Exporta `gallery.html`, `summary.json` y `detections.csv`.
 - Guarda copias de imagen o video con desenfoque facial.
 - Incluye una GUI de escritorio con selectores y flujo de un clic.
+- Muestra una vista previa de la imagen o del primer frame del video elegido.
+- Genera un ZIP descargable con el resultado final desde la GUI.
 - Puede abrir automaticamente el reporte final en el navegador.
 - Descarga y guarda en cache los modelos ONNX oficiales de OpenCV Zoo.
 
@@ -249,9 +285,11 @@ facetrail gui
 Luego la aplicacion te deja:
 
 1. elegir una imagen, video o carpeta
-2. elegir que quieres que haga FaceTrail
-3. pulsar `Start Scan`
-4. recibir el resultado dentro de una carpeta dedicada a esa eleccion
+2. previsualizar el archivo elegido directamente en la GUI
+3. elegir que quieres que haga FaceTrail
+4. pulsar `Start Scan`
+5. recibir el resultado dentro de una carpeta dedicada a esa eleccion
+6. obtener tambien un ZIP del resultado para moverlo o compartirlo facil
 
 Acciones disponibles en la GUI:
 
@@ -268,10 +306,12 @@ Motores disponibles en la GUI:
 ## Que agrega la GUI
 
 - Elegir archivos o carpetas con botones en vez de escribir rutas.
+- Previsualizar imagenes y el primer frame de videos antes de analizar.
 - Elegir visualmente la carpeta de salida.
 - Elegir el tipo exacto de resultado antes de analizar.
 - Iniciar todo el analisis con un clic.
 - Reabrir el reporte desde la misma ventana.
+- Abrir directamente la carpeta de salida o el ZIP generado.
 
 ## Estructura de salida
 
@@ -290,6 +330,10 @@ Dentro de los modos con reporte:
 Dentro de los modos con anonimizado:
 
 - `redacted/`: exportaciones seguras para compartir.
+
+La GUI tambien puede crear:
+
+- `output/<modo_timestamp>.zip`: paquete ZIP descargable del resultado generado.
 
 ## Referencia de comandos
 
@@ -326,6 +370,28 @@ Se generan con:
 
 ```bash
 python scripts/build_release.py
+```
+
+## Flujo por terminal
+
+Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -e .
+facetrail scan .\media --output .\output --engine auto --save-redacted --open-report
+facetrail gui
+```
+
+Linux:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+facetrail scan ./media --output ./output --engine auto --save-redacted --open-report
+facetrail gui
 ```
 
 ## Casos de uso
